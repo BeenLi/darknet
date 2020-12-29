@@ -27,3 +27,6 @@ Thumbs.db
 *.swp
 *.a
 *.so
+
+# vscode Generated
+.vscode

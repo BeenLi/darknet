@@ -1,13 +1,12 @@
 GPU=1
-CUDNN=1
-OPENCV=1
+CUDNN=0 # NVIDIA cuDNN是用于深度神经网络的GPU加速库
+OPENCV=0
+# Open Multi-Processing gcc 编译时需要编译选项-fopenmp, 如果编译为目标文件与链接可执行文件分两步操作 \
+那么链接时需要给出附加库gomp,否则链接报错"undefined reference to `omp_get_thread_num'"
 OPENMP=1
-DEBUG=0
+DEBUG=1
 
-ARCH= -gencode arch=compute_30,code=sm_30 \
-      -gencode arch=compute_35,code=sm_35 \
-      -gencode arch=compute_50,code=[sm_50,compute_50] \
-      -gencode arch=compute_52,code=[sm_52,compute_52]
+ARCH= -gencode arch=compute_52,code=[sm_52,compute_52]
 #      -gencode arch=compute_20,code=[sm_20,sm_21] \ This one is deprecated?
 
 # This is what I use, uncomment if you know your arch and want to specify
@@ -15,18 +14,18 @@ ARCH= -gencode arch=compute_30,code=sm_30 \
 
 VPATH=./src/:./examples
 SLIB=libdarknet.so
-ALIB=libdarknet.a
+ALIB=libdarknet.a # static library || 给目标文件打包 archive file(.lib file)
 EXEC=darknet
 OBJDIR=./obj/
 
-CC=gcc
-NVCC=nvcc 
-AR=ar
-ARFLAGS=rcs
+CC=gcc    # gcc compiler
+NVCC=nvcc # cuda compiler 
+AR=ar     # Archive-maintaining program; default ‘ar’. 生成库文件
+ARFLAGS=rcs # Flags to give the archive-maintaining program; default ‘rv’.
 OPTS=-Ofast
 LDFLAGS= -lm -pthread 
 COMMON= -Iinclude/ -Isrc/
-CFLAGS=-Wall -Wno-unused-result -Wno-unknown-pragmas -Wfatal-errors -fPIC
+CFLAGS=-Wall -fPIC
 
 ifeq ($(OPENMP), 1) 
 CFLAGS+= -fopenmp
@@ -39,16 +38,17 @@ endif
 CFLAGS+=$(OPTS)
 
 ifeq ($(OPENCV), 1) 
-COMMON+= -DOPENCV
+COMMON+= -DOPENCV # Predefine name as a macro, with definition 1
 CFLAGS+= -DOPENCV
-LDFLAGS+= `pkg-config --libs opencv` 
+LDFLAGS+= `pkg-config --libs opencv` # pkg-config 是一个在源代码编译时查询已安装的库的使用接口的计算机工具软件
 COMMON+= `pkg-config --cflags opencv` 
 endif
 
 ifeq ($(GPU), 1) 
-COMMON+= -DGPU -I/usr/local/cuda/include/
+# CUDA_PATH=C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v11.1
+COMMON+= -DGPU -I"$(CUDA_PATH)\include"
 CFLAGS+= -DGPU
-LDFLAGS+= -L/usr/local/cuda/lib64 -lcuda -lcudart -lcublas -lcurand
+LDFLAGS+= -L"$(CUDA_PATH)\lib\x64" -lcuda -lcudart -lcublas -lcurand
 endif
 
 ifeq ($(CUDNN), 1) 
@@ -71,7 +71,7 @@ DEPS = $(wildcard src/*.h) Makefile include/darknet.h
 #all: obj backup results $(SLIB) $(ALIB) $(EXEC)
 all: obj  results $(SLIB) $(ALIB) $(EXEC)
 
-
+# $(ALIB) == libdarknet.a
 $(EXEC): $(EXECOBJ) $(ALIB)
 	$(CC) $(COMMON) $(CFLAGS) $^ -o $@ $(LDFLAGS) $(ALIB)
 
@@ -94,8 +94,9 @@ backup:
 results:
 	mkdir -p results
 
-.PHONY: clean
+.PHONY: clean # special target .PHONY 
 
+# will run the recipe regardless of whether there is a file named clean(no prerequisite)
 clean:
 	rm -rf $(OBJS) $(SLIB) $(ALIB) $(EXEC) $(EXECOBJ) $(OBJDIR)/*
 
